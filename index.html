@@ -1,0 +1,59 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portul Axiom IDE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --font-family-mono: 'Fira Code', monospace;
+            --bg-color-darkest: #0c1017;
+            --bg-color-dark: #161b22;
+            --bg-color-medium: #21262d;
+            --border-color: #30363d;
+            --text-color-light: #c9d1d9;
+            --text-color-medium: #8b949e;
+            --accent-color: #58a6ff;
+        }
+        body { font-family: var(--font-family-mono); background: #0c1017; color: #c9d1d9; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-color-dark); }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+
+        .editor-gutter {
+            flex-shrink: 0;
+            padding: 1rem 0.5rem;
+            text-align: right;
+            color: var(--text-color-medium);
+            border-right: 1px solid var(--border-color);
+            background-color: var(--bg-color-darkest);
+        }
+        .line-highlight-error { background-color: rgba(248, 81, 73, 0.15); }
+        .line-highlight-warning { background-color: rgba(212, 167, 44, 0.15); }
+        /* Style for ALM's "Use After Move" error */
+        .line-highlight-memory-error {
+            background-color: rgba(240, 98, 146, 0.15);
+            text-decoration: line-through;
+            text-decoration-color: rgba(240, 98, 146, 0.7);
+        }
+        /* Style for ALM's "Dead Code" warning */
+        .line-highlight-dead-code {
+            opacity: 0.5;
+        }
+    </style>
+        <script type="module" src="/index.tsx"></script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-slate-900">
+    <div id="root">
+        <div style="padding:24px;font-family:var(--font-family-mono);color:#c9d1d9;">
+            Cargando Portul Axiom IDE...
+        </div>
+    </div>
+</body>
+</html>

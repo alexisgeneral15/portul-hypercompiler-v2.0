@@ -1,0 +1,16 @@
+
+import React from 'react';
+
+export const ExecutableIcon: React.FC = () => (
+    <svg 
+        xmlns="http://www.w3.org/2000/svg" 
+        fill="none" 
+        viewBox="0 0 24 24" 
+        strokeWidth={1.5} 
+        stroke="currentColor" 
+        className="w-4 h-4 text-lime-400"
+    >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-1.007 1.11-1.226l.554-.221m-2.22 3.844a11.954 11.954 0 0 1-2.986.502A11.954 11.954 0 0 1 3 11.954a11.954 11.954 0 0 1 3.86-8.232m12.28 16.464a11.954 11.954 0 0 1-2.986-.502 11.954 11.954 0 0 1-8.232-3.86m12.28-4.328a11.954 11.954 0 0 1-.502 2.986m-10.778-2.986a11.954 11.954 0 0 1 3.86-8.232m4.328 12.28a11.954 11.954 0 0 1 2.986-.502 11.954 11.954 0 0 1 8.232 3.86M3 11.954a11.954 11.954 0 0 1 8.232-3.86m-3.86 10.778a11.954 11.954 0 0 1-.502-2.986" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5Z" />
+    </svg>
+);

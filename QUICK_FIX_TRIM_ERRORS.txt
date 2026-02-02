@@ -1,0 +1,43 @@
+// Quick fix patch for localAiEngine.ts trim() errors
+
+// Line 293 - Add safety check before trim()
+// BEFORE:
+// understandIntent(naturalLanguage: string): CodeIntent {
+//     const normalized = naturalLanguage.toLowerCase().trim();
+
+// AFTER:
+understandIntent(naturalLanguage: string): CodeIntent {
+    if (!naturalLanguage || typeof naturalLanguage !== 'string') {
+        return { intent: 'explain', confidence: 0.3, keywords: [] };
+    }
+    const normalized = naturalLanguage.toLowerCase().trim();
+    const tokens = normalized.split(/\s+/).filter(t => t.length > 0);  // Add filter
+    
+// Line 498-505 - Add safety checks in processQuery
+// BEFORE:
+// async processQuery(query: string, code: string, context: any): Promise<AIResponse> {
+//     const intent = this.codeUnderstanding.understandIntent(query);
+//     const diagnostics = this.semanticAnalyzer.analyze(code);
+//     const suggestions = this.codeUnderstanding.suggestCompletion(code, context.cursorLine || 0);
+
+// AFTER:
+async processQuery(query: string, code: string, context: any): Promise<AIResponse> {
+    const safeQuery = query || '';
+    const safeCode = code || '';
+    const intent = this.codeUnderstanding.understandIntent(safeQuery);
+    const diagnostics = safeCode.trim().length > 0 ? this.semanticAnalyzer.analyze(safeCode) : [];
+    const suggestions = this.codeUnderstanding.suggestCompletion(safeCode, context.cursorLine || 0);
+
+// Line 387 - Add filter for empty tokens
+// BEFORE:
+// const tokens = currentLine.trim().split(/\s+/);
+
+// AFTER:
+const tokens = currentLine.trim().split(/\s+/).filter(t => t.length > 0);
+
+// Line 464 - Add safety check for lines[i]
+// BEFORE:
+// const line = lines[i].trim();
+
+// AFTER:
+const line = (lines[i] || '').trim();

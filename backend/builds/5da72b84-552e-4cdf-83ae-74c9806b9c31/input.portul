@@ -1,0 +1,6 @@
+main {
+    num x = 10;
+    num y = 5;
+    put x;
+    put y;
+}

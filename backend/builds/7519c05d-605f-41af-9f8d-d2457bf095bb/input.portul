@@ -1,0 +1,7 @@
+main {
+    num count = 0;
+    for i 0 3 {
+        inc count;
+        put count;
+    }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Portul HyperCompiler",
+  "description": "A web-based simulation of a hyper-advanced, efficient, and ergonomic Portul language compiler, designed to conceptually run on minimal hardware.",
+  "requestFramePermissions": []
+}
