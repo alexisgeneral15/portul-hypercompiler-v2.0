@@ -1,20 +1,72 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Portul Hypercompiler + Aether IA
 
-# Run and deploy your AI Studio app
+Suite de compilacion y entorno de desarrollo para Portul:
+- Frontend React + Vite
+- Desktop app con Electron
+- Backend Node.js para compilacion y streaming IA
 
-This contains everything you need to run your app locally.
+## Inicio rapido
 
-View your app in AI Studio: https://ai.studio/apps/drive/1CKYDQNc6aqq_NLuBADKNDiGNzYIDJ4-D
+### Opcion 1: flujo desktop (recomendado en desarrollo)
 
-## Run Locally
+```bash
+npm install
+npm run start:dev
+```
 
-**Prerequisites:**  Node.js
+Esto levanta Vite, backend y Electron en un solo comando.
 
+### Opcion 2: flujo web + backend separado
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Terminal 1:
+
+```bash
+npm run dev:backend
+```
+
+Terminal 2:
+
+```bash
+npm run dev:web
+```
+
+Frontend: http://localhost:5173
+Backend: http://localhost:3001/health
+
+## Scripts principales
+
+- `npm run start:dev`: Vite + backend + Electron (entorno integrado)
+- `npm run dev:web`: solo frontend Vite
+- `npm run dev:backend`: backend con nodemon
+- `npm run start:backend`: backend con Node
+- `npm run build`: build de frontend
+- `npm run build:desktop`: empaquetado desktop con electron-builder
+
+## Arquitectura (resumen)
+
+- `src/`: UI y servicios frontend
+- `backend/src/`: API, compilacion, auth y Socket.IO
+- `electron/portultro/`: proceso principal y preload de Electron
+- `scripts/dev-electron.cjs`: orquestador de desarrollo integrado
+
+## Aether IA streaming
+
+El backend expone eventos Socket.IO para streaming de tokens IA (`generate-ia` -> `stream_chunk`).
+
+Si trabajas con artefactos Portul IA, revisa:
+- `AETHER_AI_GUIDE.md`
+- `AETHER_PORTUL_QUICKSTART.md`
+- `AETHER_PORTUL_INTEGRACION.md`
+
+## Documentacion recomendada
+
+- `COMIENZA_AQUI.md`
+- `IMPLEMENTACION_COMPLETA.md`
+- `ARQUITECTURA_COMPLETA.md`
+- `GUIA_RAPIDA.md`
+
+## Requisitos
+
+- Node.js 18+
+- npm 9+
+- Windows 10/11 (objetivo principal del flujo de compilacion a .exe)
