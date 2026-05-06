@@ -7,11 +7,11 @@
 
 const fs = require('fs');
 const path = require('path');
-const Lexer = require('./backend/src/compiler/lexer');
-const Parser = require('./backend/src/compiler/parser');
-const SemanticAnalyzer = require('./backend/src/compiler/semanticAnalyzer');
-const IRGenerator = require('./backend/src/compiler/irGenerator');
-const LLVMCompiler = require('./backend/src/compiler/llvmCompiler');
+const { PortulLexer } = require('./backend/src/compiler/lexer.js');
+const { PortulParser } = require('./backend/src/compiler/parser.js');
+const { SemanticAnalyzer } = require('./backend/src/compiler/semanticAnalyzer.js');
+const { IRGenerator } = require('./backend/src/compiler/irGenerator.js');
+const { LLVMCompiler } = require('./backend/src/compiler/llvmCompiler.js');
 
 console.log('🚀 PORTUL REAL META-BOOTSTRAP COMPILATION');
 console.log('==========================================\n');
@@ -23,14 +23,14 @@ try {
 
   // 2. Fase 1: Lexical Analysis
   console.log('\n[Fase 1] Análisis Léxico...');
-  const lexer = new Lexer(bootstrapSource);
-  const tokens = lexer.tokenize();
+  const lexer = new PortulLexer();
+  const tokens = lexer.tokenize(bootstrapSource);
   console.log(`✓ ${tokens.length} tokens generados`);
 
   // 3. Fase 2: Parsing
   console.log('\n[Fase 2] Análisis Sintáctico...');
-  const parser = new Parser(tokens);
-  const ast = parser.parse();
+  const parser = new PortulParser();
+  const ast = parser.parse(tokens);
   console.log('✓ AST construido');
 
   // 4. Fase 3: Semantic Analysis

@@ -52,5 +52,28 @@ scripts\build_release.bat
 - `v1.0.0`: IDE nativo Windows, bootstrapping validado, I/O + compilación en caliente.
 - Próximas versiones: Linux ELF, highlighting por línea completa, terminal integrada.
 
-## 🔗 Proyecto Relacionado
+## � Estado actual V2.1
+Esta rama `V2.1` contiene la validación completa del IDE nativo en Portul v1.0A3 y la adaptación del pipeline al dialecto español del parser.
+
+- ✅ `src/sys/types.portul` agregado para definiciones de tipos base Win32.
+- ✅ `src/ui/window.portul` corregido al dialecto aceptado por `backend/src/compiler`.
+- ✅ `node compile-bootstrap-real.cjs` ejecuta el bootstrap real con el backend existente.
+- ⚠️ En Linux/Codespace la generación de `PortulCompilerBootstrap-REAL.exe` produce un PE stub válido de 512 bytes por la falta de toolchain Windows nativo.
+- ✅ `scripts/validate_ide.mjs` puede usarse para verificar los archivos clave del IDE a través de lexer, parser y análisis semántico.
+
+## 🧪 Validación en esta rama
+```bash
+node scripts/validate_ide.mjs
+```
+
+## 🧱 Compilación en Linux/Codespace
+```bash
+node compile-bootstrap-real.cjs
+ls -lh PortulCompilerBootstrap-REAL.exe
+file PortulCompilerBootstrap-REAL.exe
+```
+
+> Para obtener un ejecutable Windows completo, compila en un entorno Windows nativo con LLVM/MSVC o `llvm-mingw`.
+
+## �🔗 Proyecto Relacionado
 🔗 [Portul Hypercompiler v2.0](https://github.com/alexisgeneral15/portul-hypercompiler-v2.0)

@@ -1,0 +1,47 @@
+# src/sys/types.portul
+# Tipos base para bindings Win32 en Portul v1.0A3
+
+num i8 = 0;
+num i16 = 0;
+num i32 = 0;
+num i64 = 0;
+num u8 = 0;
+num u16 = 0;
+num u32 = 0;
+num u64 = 0;
+
+ptr hwnd = 0;
+ptr hdc = 0;
+ptr hinst = 0;
+ptr hfile = 0;
+ptr ptr0 = 0;
+
+flg flg = 0;
+err err = 0;
+
+obj Recto { num izq; num sup; num der; num inf; }
+obj Punto { num x; num y; }
+obj MsgWin { ptr ventana; num mensaje; num wParam; num lParam; num tiempo; Punto pt; }
+
+num WS_OVERLAPPEDWINDOW = 0x00CF0000;
+num WM_PAINT = 0x000F;
+num WM_KEYDOWN = 0x0100;
+num WM_CHAR = 0x0102;
+num WM_DESTROY = 0x0002;
+num VK_BACK = 0x08;
+num VK_RETURN = 0x0D;
+num VK_CONTROL = 0x11;
+num WHITE_BRUSH = 0;
+num TRANSPARENT = 1;
+num GENERIC_READ = 0x80000000;
+num GENERIC_WRITE = 0x40000000;
+num CREATE_ALWAYS = 2;
+num RGB_NEGRO = 0x000000;
+num RGB_BLANCO = 0xFFFFFF;
+num RGB_AZUL = 0xFF0000;
+num RGB_ROJO = 0x0000FF;
+num RGB_VERDE = 0x00FF00;
+
+exp Recto; exp Punto; exp MsgWin;
+exp WS_OVERLAPPEDWINDOW; exp WM_PAINT; exp WM_DESTROY;
+exp RGB_NEGRO; exp RGB_BLANCO; exp TRANSPARENT;
