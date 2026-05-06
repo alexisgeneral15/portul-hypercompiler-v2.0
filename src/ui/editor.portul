@@ -1,0 +1,331 @@
+# ui/editor.portul
+# Editor de texto nativo para Portul IDE
+# Buffer: arena-managed | Input: Win32 msg | Render: GDI puro
+
+use "sys/types";
+use "sys/winapi";
+use "memory/arena";
+
+num VISIBLE_LINES = 30;
+num LINE_HEIGHT = 16;
+num MAX_LINE_LEN = 512;
+num STATUS_BAR_HEIGHT = 20;
+
+obj Editor {
+    ptr buf;          # Buffer de texto plano (gestionado por arena)
+    num buf_cap;      # Capacidad máxima del buffer
+    num len;          # Longitud actual del texto (caracteres)
+    num cursor;       # Posición del cursor (índice 0-based)
+    num scroll_y;     # Línea superior visible (0-based)
+    num line_h;       # Altura de línea en píxeles
+    num char_w;       # Ancho aproximado de carácter (fuente fija)
+    ptr hwnd;         # Handle de la ventana
+    ptr hdc;          # Device context activo
+    txt status_msg;   # Texto de estado para la barra inferior
+    txt filename;     # Nombre del archivo abierto
+}
+
+# =============================================================================
+# Inicialización y limpieza
+# =============================================================================
+new EditorInit ptr ed, num max_bytes {
+    set ed.buf_cap max_bytes;
+    set ed.buf cal alloc max_bytes;
+    chk ed.buf;
+    cal own_track ed.buf;
+
+    set ed.len 0;
+    set ed.cursor 0;
+    set ed.scroll_y 0;
+    set ed.line_h LINE_HEIGHT;
+    set ed.char_w 8;
+    set ed.hwnd 0;
+    set ed.hdc 0;
+    set ed.status_msg "READY";
+    set ed.filename "untitled.portul";
+    ret 0;
+}
+
+new EditorReset ptr ed {
+    set ed.len 0;
+    set ed.cursor 0;
+    set ed.scroll_y 0;
+    set ed.status_msg "READY";
+    set ed.filename "untitled.portul";
+    ret 0;
+}
+
+new EditorEnsureCursorVisible ptr ed {
+    num cursor_line = cal line_idx_to_y ed ed.cursor;
+    if lt cursor_line ed.scroll_y {
+        set ed.scroll_y cursor_line;
+        ret 0;
+    }
+
+    num visible = VISIBLE_LINES;
+    if gte cursor_line add ed.scroll_y visible {
+        set ed.scroll_y add cursor_line sub visible 1;
+    }
+    ret 0;
+}
+
+# =============================================================================
+# Manejo de input (WM_CHAR / WM_KEYDOWN)
+# =============================================================================
+new EditorInput ptr ed, num msg_type, num vk {
+    if equ msg_type WM_CHAR {
+        if gte vk 0x20 {
+            if lt ed.len ed.buf_cap {
+                num remaining = sub ed.len ed.cursor;
+                ptr src = add ed.buf ed.cursor;
+                ptr dst = add ed.buf add ed.cursor 1;
+                cal mem_copy dst, src, remaining;
+                cal write_mem add ed.buf ed.cursor vk;
+                inc ed.cursor;
+                inc ed.len;
+            }
+        }
+        cal EditorEnsureCursorVisible(ed);
+        ret 0;
+    }
+
+    if equ msg_type WM_KEYDOWN {
+        if equ vk VK_BACK {
+            if gt ed.cursor 0 {
+                dec ed.cursor;
+                num remaining = sub ed.len ed.cursor;
+                ptr src = add ed.buf add ed.cursor 1;
+                ptr dst = add ed.buf ed.cursor;
+                cal mem_copy dst, src, remaining;
+                dec ed.len;
+            }
+        }
+
+        if equ vk VK_RETURN {
+            if lt ed.len ed.buf_cap {
+                num remaining = sub ed.len ed.cursor;
+                ptr src = add ed.buf ed.cursor;
+                ptr dst = add ed.buf add ed.cursor 1;
+                cal mem_copy dst, src, remaining;
+                cal write_mem add ed.buf ed.cursor 10;
+                inc ed.cursor;
+                inc ed.len;
+            }
+        }
+
+        if equ vk VK_LEFT {
+            if gt ed.cursor 0 { dec ed.cursor; }
+        }
+        if equ vk VK_RIGHT {
+            if lt ed.cursor ed.len { inc ed.cursor; }
+        }
+        if equ vk VK_UP {
+            num pos = ed.cursor;
+            whl gt pos 0 {
+                num ch = cal read_mem add ed.buf sub pos 1;
+                if equ ch 10 { break; }
+                dec pos;
+            }
+            set ed.cursor pos;
+        }
+        if equ vk VK_DOWN {
+            num pos = ed.cursor;
+            whl lt pos ed.len {
+                num ch = cal read_mem add ed.buf pos;
+                if equ ch 10 { inc pos; break; }
+                inc pos;
+            }
+            set ed.cursor pos;
+        }
+
+        cal EditorEnsureCursorVisible(ed);
+        ret 0;
+    }
+    ret 0;
+}
+
+new EditorKeyDown ptr ed, num vk {
+    if equ vk VK_LEFT { if gt ed.cursor 0 { dec ed.cursor; } cal EditorEnsureCursorVisible(ed); ret 0; }
+    if equ vk VK_RIGHT { if lt ed.cursor ed.len { inc ed.cursor; } cal EditorEnsureCursorVisible(ed); ret 0; }
+    if equ vk VK_UP   { if gt ed.scroll_y 0 { dec ed.scroll_y; } ret 0; }
+    if equ vk VK_DOWN { inc ed.scroll_y; ret 0; }
+    ret 0;
+}
+
+# =============================================================================
+# Renderizado GDI puro
+# =============================================================================
+new EditorRender ptr ed, ptr rect {
+    ptr bg = cal GetStockObject(WHITE_BRUSH);
+    cal FillRect(ed.hdc, rect, bg);
+    cal SetBkMode(ed.hdc, TRANSPARENT);
+
+    num left = cal read_mem rect;
+    num top = cal read_mem add rect 4;
+    num right = cal read_mem add rect 8;
+    num bottom = cal read_mem add rect 12;
+    num text_height = sub sub bottom top STATUS_BAR_HEIGHT;
+    num visible_lines = div text_height ed.line_h;
+    num y = add top 2;
+
+    num pos = 0;
+    num line_no = 0;
+
+    whl lt pos ed.len {
+        num line_len = 0;
+        num temp_pos = pos;
+        txt line = "";
+
+        whl lt temp_pos ed.len {
+            num ch = cal read_mem add ed.buf temp_pos;
+            if equ ch 10 { break; }
+            if gte line_len MAX_LINE_LEN { break; }
+            cal cat line ch;
+            inc line_len;
+            inc temp_pos;
+        }
+
+        if gte line_no ed.scroll_y {
+            if lt sub line_no ed.scroll_y visible_lines {
+                num color = cal EditorHighlight(line);
+                cal SetTextColor(ed.hdc, color);
+                if gt line_len 0 {
+                    cal TextOutA(ed.hdc, add left 4, y, line, line_len);
+                }
+                add y ed.line_h;
+            } else {
+                break;
+            }
+        }
+
+        set pos temp_pos;
+        if lt pos ed.len { inc pos; }
+        inc line_no;
+    }
+
+    num cursor_line = cal line_idx_to_y ed ed.cursor;
+    num cursor_col = cal pos_in_line ed ed.cursor;
+    if lt cursor_line add ed.scroll_y visible_lines {
+        if gte cursor_line ed.scroll_y {
+            num rel_line = sub cursor_line ed.scroll_y;
+            num cursor_x = add left mul cursor_col ed.char_w;
+            num cursor_y = add top mul rel_line ed.line_h;
+            ptr cursor_rect = cal alloc 16;
+            cal write_mem cursor_rect cursor_x;
+            cal write_mem add cursor_rect 4 cursor_y;
+            cal write_mem add cursor_rect 8 add cursor_x 2;
+            cal write_mem add cursor_rect 12 add cursor_y ed.line_h;
+            ptr black = cal CreateSolidBrush(RGB_BLACK);
+            cal FillRect(ed.hdc, cursor_rect, black);
+            cal DeleteObject(black);
+            del cursor_rect;
+        }
+    }
+
+    ptr status_rect = cal alloc 16;
+    cal write_mem status_rect left;
+    cal write_mem add status_rect 4 sub bottom STATUS_BAR_HEIGHT;
+    cal write_mem add status_rect 8 right;
+    cal write_mem add status_rect 12 bottom;
+    ptr gray = cal CreateSolidBrush(RGB_GRAY);
+    cal FillRect(ed.hdc, status_rect, gray);
+    cal SetTextColor(ed.hdc, RGB_BLACK);
+    cal TextOutA(ed.hdc, add left 4, add sub bottom STATUS_BAR_HEIGHT 14, ed.status_msg, cal len ed.status_msg);
+    cal DeleteObject(gray);
+    del status_rect;
+
+    ret 0;
+}
+
+new pos_in_line ptr ed, num idx num {
+    num count = 0;
+    num p = 0;
+    whl lt p idx {
+        num ch = cal read_mem add ed.buf p;
+        if equ ch 10 { set count 0; } else { inc count; }
+        inc p;
+    }
+    ret count;
+}
+
+new line_idx_to_y ptr ed, num idx num {
+    num count = 0;
+    num p = 0;
+    whl lt p idx {
+        num ch = cal read_mem add ed.buf p;
+        if equ ch 10 { inc count; }
+        inc p;
+    }
+    ret count;
+}
+
+# =============================================================================
+# Highlighting estático de sintaxis Portul
+# =============================================================================
+new EditorHighlight txt line num ret {
+    txt word = "";
+    num i = 0;
+    num line_len = cal len line;
+
+    whl lt i line_len {
+        num ch = cal pos line i;
+        if equ ch 32 { break; }
+        if equ ch 9 { break; }
+        if equ ch 0 { break; }
+        cal cat word ch;
+        inc i;
+    }
+
+    if equ word "num" { ret RGB_BLUE; }
+    if equ word "txt" { ret RGB_BLUE; }
+    if equ word "ptr" { ret RGB_BLUE; }
+    if equ word "own" { ret RGB_BLUE; }
+    if equ word "flg" { ret RGB_BLUE; }
+    if equ word "ary" { ret RGB_BLUE; }
+    if equ word "obj" { ret RGB_BLUE; }
+    if equ word "if"  { ret RGB_RED; }
+    if equ word "for" { ret RGB_RED; }
+    if equ word "whl" { ret RGB_RED; }
+    if equ word "try" { ret RGB_RED; }
+    if equ word "err" { ret RGB_RED; }
+    if equ word "fin" { ret RGB_RED; }
+    if equ word "cal" { ret RGB_GREEN; }
+    if equ word "new" { ret RGB_GREEN; }
+    if equ word "ret" { ret RGB_GREEN; }
+    if equ word "put" { ret RGB_GREEN; }
+    if equ word "use" { ret RGB_GREEN; }
+    if equ word "set" { ret RGB_GREEN; }
+
+    ret RGB_BLACK;
+}
+
+# =============================================================================
+# Helpers de integración con ventana
+# =============================================================================
+new EditorAttachWindow ptr ed, ptr hwnd {
+    set ed.hwnd hwnd;
+    ret 0;
+}
+
+new EditorAttachDC ptr ed, ptr hdc {
+    set ed.hdc hdc;
+    ret 0;
+}
+
+# =============================================================================
+# Exportaciones
+# =============================================================================
+exp Editor;
+exp EditorInit;
+exp EditorReset;
+exp EditorInput;
+exp EditorRender;
+exp EditorHighlight;
+exp pos_in_line;
+exp line_idx_to_y;
+exp EditorKeyDown;
+exp EditorAttachWindow;
+exp EditorAttachDC;
+
+fast code;
+safe code;

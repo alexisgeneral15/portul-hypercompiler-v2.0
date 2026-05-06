@@ -1,0 +1,153 @@
+# ui/window.portul
+# Ventana principal, WndProc y Message Loop para Portul IDE
+# Interfaz Ctrl+S/O, status bar y editor nativo
+
+use "sys/types";
+use "sys/winapi";
+use "memory/arena";
+use "ui/editor";
+use "core/bridge";
+
+num GWLP_USERDATA = -21;
+num SW_SHOW = 1;
+num VK_CONTROL = 0x11;
+num VK_O = 0x4F;
+num VK_S = 0x53;
+
+flg ctrl_down = 0;
+
+# =============================================================================
+# WndProc - Manejador de mensajes
+# =============================================================================
+new WndProc ptr hwnd, num msg, u64 wParam, i64 lParam i64 {
+    ptr ed_ptr = cal GetWindowLongPtrA(hwnd, GWLP_USERDATA);
+    if equ ed_ptr 0 { ret cal DefWindowProcA(hwnd, msg, wParam, lParam); }
+    ptr ed = ed_ptr;
+
+    if equ msg WM_KEYDOWN {
+        if equ wParam VK_CONTROL { set ctrl_down 1; ret 0; }
+        if equ ctrl_down 1 {
+            if equ wParam VK_S {
+                set ed.status_msg "SAVING & COMPILING...";
+                cal CompileProject(ed.buf, ed.len, "output.exe");
+                set ed.status_msg cal GetCompileStatus();
+                cal InvalidateRect(hwnd, 0, 1);
+                ret 0;
+            }
+            if equ wParam VK_O {
+                cal OpenProject("main.portul", ed);
+                set ed.status_msg cal GetCompileStatus();
+                cal InvalidateRect(hwnd, 0, 1);
+                ret 0;
+            }
+        }
+        cal EditorInput(ed, WM_KEYDOWN, wParam);
+        cal InvalidateRect(hwnd, 0, 1);
+        ret 0;
+    }
+
+    if equ msg WM_KEYUP {
+        if equ wParam VK_CONTROL { set ctrl_down 0; ret 0; }
+    }
+
+    if equ msg WM_CHAR {
+        if equ ctrl_down 0 {
+            cal EditorInput(ed, WM_CHAR, wParam);
+            cal InvalidateRect(hwnd, 0, 1);
+        }
+        ret 0;
+    }
+
+    if equ msg WM_PAINT {
+        ptr rect = cal alloc 16; chk rect;
+        cal GetClientRect(hwnd, rect);
+        set ed.hdc cal GetDC(hwnd);
+        cal EditorRender(ed, rect);
+        cal ReleaseDC(hwnd, ed.hdc);
+        cal ValidateRect(hwnd, 0);
+        del rect;
+        ret 0;
+    }
+
+    if equ msg WM_SIZE {
+        cal InvalidateRect(hwnd, 0, 1);
+        ret 0;
+    }
+
+    if equ msg WM_DESTROY {
+        cal PostQuitMessage(0);
+        ret 0;
+    }
+
+    ret cal DefWindowProcA(hwnd, msg, wParam, lParam);
+}
+
+# =============================================================================
+# Inicialización y Message Loop
+# =============================================================================
+new RunIDE num hInst, ptr cmdLine err {
+    cal ArenaInit;
+
+    txt className = "PortulIDE";
+    ptr wc = cal alloc 48;
+    chk wc;
+    cal own_track wc;
+
+    cal write_mem wc 48;
+    cal write_mem add wc 4 0;
+    cal write_mem add wc 8 WndProc;
+    cal write_mem add wc 16 0;
+    cal write_mem add wc 20 0;
+    cal write_mem add wc 24 hInst;
+    cal write_mem add wc 32 0;
+    cal write_mem add wc 40 IDC_ARROW;
+    cal write_mem add wc 48 WHITE_BRUSH;
+    cal write_mem add wc 56 0;
+    cal write_mem add wc 64 className;
+    cal write_mem add wc 72 0;
+
+    u16 atom = cal RegisterClassExA(wc);
+    if equ atom 0 {
+        cal ShowErr("ERR: RegisterClassExA failed");
+        ret -1;
+    }
+
+    ptr hwnd = cal CreateWindowExA(
+        0, className, "Portul IDE v1.0A3", WS_OVERLAPPEDWINDOW,
+        100, 100, 900, 600, 0, 0, hInst, 0
+    );
+    if equ hwnd 0 {
+        cal ShowErr("ERR: CreateWindowExA failed");
+        ret -1;
+    }
+
+    ptr ed = cal alloc 64;
+    chk ed;
+    cal own_track ed;
+    cal EditorInit(ed, 65536);
+    set ed.hwnd hwnd;
+    cal EditorAttachWindow(ed, hwnd);
+
+    cal SetWindowLongPtrA(hwnd, GWLP_USERDATA, ed);
+
+    cal ShowWindow(hwnd, SW_SHOW);
+    cal UpdateWindow(hwnd);
+
+    ptr msg = cal alloc 48;
+    chk msg;
+    cal own_track msg;
+
+    whl cal GetMessageA(msg, 0, 0, 0) {
+        cal TranslateMessage(msg);
+        cal DispatchMessageA(msg);
+    }
+
+    cal ArenaReset;
+    ret 0;
+}
+
+exp WndProc;
+exp RunIDE;
+
+fast code;
+safe code;

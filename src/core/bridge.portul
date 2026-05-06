@@ -1,0 +1,61 @@
+# core/bridge.portul
+# Puente entre IDE y Compiler Backend
+# Maneja I/O de archivos y llamada al pipeline de compilación
+
+use "sys/types";
+use "sys/winapi";
+use "memory/arena";
+
+txt compile_msg = "READY";
+num compiling = 0;
+
+new CompileProject ptr buf, num len, txt out_path {
+    if equ compiling 1 { ret; }
+    set compiling 1;
+    set compile_msg "COMPILING...";
+
+    # TODO: Reemplazar con llamada real a tu backend:
+    # err res = cal compile_source(buf, len, out_path);
+    # Por ahora: stub que escribe el buffer como .exe (para probar flujo)
+    err res = cal FileWriteAll(out_path, buf, len);
+    if neq res 0 {
+        set compile_msg "ERR: WRITE FAILED";
+    } else {
+        set compile_msg "BUILD: OK → "; cat compile_msg out_path;
+    }
+
+    set compiling 0;
+}
+
+new OpenProject txt path, ptr ed {
+    ptr temp = cal alloc 65536;
+    ptr len_ptr = cal alloc 4;
+    chk temp;
+    chk len_ptr;
+
+    err res = cal FileReadAll(path, temp, len_ptr);
+    if equ res 0 {
+        num len = cal read_mem len_ptr;
+        num to_copy = len;
+        if gt to_copy ed.buf_cap { set to_copy ed.buf_cap; }
+        cal mem_copy ed.buf, temp, to_copy;
+        set ed.len to_copy;
+        set ed.cursor 0;
+        set ed.scroll_y 0;
+        set compile_msg "LOADED: "; cat compile_msg path;
+    } else {
+        set compile_msg "ERR: FILE NOT FOUND";
+    }
+
+    del temp;
+    del len_ptr;
+}
+
+new GetCompileStatus txt { ret compile_msg; }
+
+exp CompileProject;
+exp OpenProject;
+exp GetCompileStatus;
+
+fast code;
+safe code;

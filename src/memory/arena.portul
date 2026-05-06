@@ -1,0 +1,167 @@
+# memory/arena.portul
+# Allocador determinista tipo "bump-pointer" para Portul IDE/Compiler
+# Sin GC, sin malloc disperso, limpieza por scope o arena reset
+
+use "sys/types";
+
+# =============================================================================
+# Configuración
+# =============================================================================
+num ARENA_SIZE = 65536;       # 64 KB por defecto (ajustable en compile-time)
+num ALIGN_MASK = 0xFFFFFFFFFFFFFFF8;  # Máscara para alinear a 8 bytes (x86-64)
+num MAX_OWN_TRACK = 1024;     # Máximo punteros 'own' antes de reset
+
+# =============================================================================
+# Estado Global de la Arena
+# =============================================================================
+ptr arena_base;   # Inicio del bloque
+ptr arena_ptr;    # Puntero de asignación actual
+ptr arena_end;    # Límite superior
+
+ptr own_buffer;   # Buffer plano para tracking de 'own'
+num own_idx;      # Índice actual en own_buffer
+num scope_mark;   # Marca de inicio de scope para rollback
+
+# =============================================================================
+# Inicialización
+# =============================================================================
+new ArenaInit err {
+    # Asignar bloque principal
+    set arena_base heap alloc ARENA_SIZE;
+    chk arena_base;
+    set arena_ptr arena_base;
+    set arena_end add arena_base ARENA_SIZE;
+
+    # Asignar buffer de tracking para 'own'
+    set own_buffer cal alloc mul MAX_OWN_TRACK 8;
+    chk own_buffer;
+    set own_idx 0;
+    set scope_mark 0;
+
+    ret 0;  # éxito
+}
+
+# =============================================================================
+# Asignación Básica (Bump-Pointer)
+# =============================================================================
+new alloc num size ptr {
+    if equ size 0 { ret 0; }
+
+    # Calinear a 8 bytes: (ptr + 7) & ~7
+    ptr aligned = add arena_ptr 7;
+    bit aligned ALIGN_MASK;
+
+    # Verificar espacio
+    if gte add aligned size arena_end {
+        put "ERR: Arena out of memory";
+        ret 0;
+    }
+
+    ptr result = aligned;
+    set arena_ptr add aligned size;
+
+    # Inicializar a cero (seguridad y predictibilidad)
+    cal mem_zero result, size;
+
+    chk result;
+    ret result;
+}
+
+# =============================================================================
+# Registro 'own' (Auto-Free por Scope)
+# =============================================================================
+new own_track ptr p {
+    if equ p 0 { ret; }
+    if gte own_idx MAX_OWN_TRACK {
+        put "ERR: Own track limit reached. Use ArenaReset.";
+        ret;
+    }
+
+    # Guardar puntero en buffer plano
+    ptr slot = add own_buffer mul own_idx 8;
+    cal write_mem slot, p;
+    inc own_idx;
+}
+
+# =============================================================================
+# Gestión de Scopes Deterministas
+# =============================================================================
+new scope_enter {
+    set scope_mark own_idx;
+}
+
+new scope_exit {
+    # Liberar en orden inverso (LIFO) todo lo registrado después de scope_mark
+    whl gt own_idx scope_mark {
+        dec own_idx;
+        ptr slot = add own_buffer mul own_idx 8;
+        ptr p = cal read_mem slot;
+        
+        if neq p 0 {
+            # En bump allocator no hay free individual.
+            # Zeroing invalida la referencia y previene use-after-free.
+            cal mem_zero p, 64;  # Asume tamaño máximo razonable para structs
+        }
+    }
+}
+
+# =============================================================================
+# Reset Completo (Recupera toda la arena)
+# =============================================================================
+new ArenaReset {
+    set arena_ptr arena_base;
+    set own_idx 0;
+    set scope_mark 0;
+    # No necesitamos memset a cero aquí: alloc lo hace por seguridad.
+}
+
+# =============================================================================
+# Helpers Tipados (Facilitan uso en IDE/Compiler)
+# =============================================================================
+
+# String con null terminator
+new alloc_txt num len ptr {
+    ptr buf = cal alloc add len 1;
+    chk buf;
+    ret buf;
+}
+
+# Array de números (4 bytes cada uno)
+new alloc_num_ary num count ptr {
+    ptr buf = cal alloc mul count 4;
+    chk buf;
+    ret buf;
+}
+
+# Objeto genérico (tamaño explícito)
+new alloc_obj num size ptr {
+    ptr buf = cal alloc size;
+    chk buf;
+    ret buf;
+}
+
+# Duplicar buffer existente
+new clone_buf ptr src, num len ptr {
+    ptr dst = cal alloc len;
+    chk dst;
+    cal mem_copy dst, src, len;
+    ret dst;
+}
+
+# =============================================================================
+# Exportaciones
+# =============================================================================
+exp ArenaInit;
+exp alloc;
+exp own_track;
+exp scope_enter;
+exp scope_exit;
+exp ArenaReset;
+exp alloc_txt;
+exp alloc_num_ary;
+exp alloc_obj;
+exp clone_buf;
+
+# Hint: Crítico para rendimiento. Sin overhead de runtime.
+fast code;
+safe code;  # Verificaciones chk activas en debug, optimizables en release

@@ -1,0 +1,15 @@
+# src/main.portul
+# Punto de entrada del IDE. Desencadena RunIDE con hInstance del proceso.
+
+use "sys/types";
+use "sys/winapi";
+use "ui/window";
+
+new main num argc, ptr argv num {
+    ptr hInst = cal GetModuleHandleA(0);
+    ret cal RunIDE(hInst, 0);
+}
+
+exp main;
+fast code;
+safe code;
