@@ -1,0 +1,207 @@
+# sys/winapi.portul
+# Bindings nativos a Win32 API para Portul IDE
+# Usa dialecto español: usa, nuevo, si, regresa, mientras, pon, chk, cal
+
+usa "sys/types";
+
+# =============================================================================
+# USER32.DLL - Gestión de ventanas y mensajes
+# =============================================================================
+
+# RegisterClassExA - Registrar clase de ventana
+nuevo RegistraClaseExA ptr wndclass u16;
+
+# CreateWindowExA - Crear ventana
+nuevo CreaVentanaExA num exStyle, txt className, txt windowName, num style,
+    num x, num y, num width, num height,
+    ptr parent, ptr menu, ptr instance, ptr param ptr hwnd;
+
+# DefWindowProcA - Procedimiento por defecto
+nuevo DefWindowProcA ptr hwnd, num msg, num wParam, num lParam num;
+
+# GetMessageA - Obtener mensaje de cola
+nuevo ObtenMensajeA ptr msg, ptr hwnd, num minMsg, num maxMsg num ret;
+
+# DispatchMessageA - Despachar mensaje a WndProc
+nuevo DespachaMensajeA ptr msg num ret;
+
+# PostQuitMessage - Terminar message loop
+nuevo PostMensajeSalida num exitCode;
+
+# InvalidateRect - Marcar área para redibujar
+nuevo InvalidaRecto ptr hwnd, ptr rect, num erase flg ret;
+
+# GetClientRect - Obtener área cliente de ventana
+nuevo ObtenRectoCliente ptr hwnd, ptr rect num ret;
+
+# ShowWindow - Mostrar/ocultar ventana
+nuevo MuestraVentana ptr hwnd, num cmdShow num ret;
+
+# UpdateWindow - Forzar repaint inmediato
+nuevo ActualizaVentana ptr hwnd num ret;
+
+# SetFocus - Establecer foco de teclado
+nuevo PonFoco ptr hwnd ptr hwnd;
+
+# GetWindowLongPtrA / SetWindowLongPtrA
+nuevo ObtenLongVentanaA ptr hwnd, num index num ret;
+nuevo PonLongVentanaA ptr hwnd, num index, num nuevoVal num ret;
+
+# ValidateRect / TranslateMessage
+nuevo ValidaRecto ptr hwnd, ptr rect num ret;
+nuevo TraduceMensaje ptr msg num ret;
+
+# MessageBoxA - Diálogo simple
+nuevo MensajeCajaA ptr hwnd, txt text, txt caption, num type num ret;
+
+# Recursos
+num IDC_FLECHA = 32512;
+
+# =============================================================================
+# GDI32.DLL - Renderizado gráfico 2D
+# =============================================================================
+
+nuevo ObtenDC ptr hwnd ptr hdc;
+nuevo LiberaDC ptr hwnd, ptr hdc num ret;
+nuevo TextoFueraA ptr hdc, num x, num y, txt str, num len num ret;
+nuevo PonColorTexto ptr hdc, num color num ret;
+nuevo PonModoFondo ptr hdc, num modo num ret;
+nuevo RellenaRecto ptr hdc, ptr rect, ptr brocha num ret;
+nuevo ObtenObjetoStock num index ptr ret;
+nuevo CreaBrochaSolida num color ptr ret;
+nuevo BorraObjeto ptr obj num ret;
+nuevo SeleccionaObjeto ptr hdc, ptr obj ptr ret;
+
+# =============================================================================
+# KERNEL32.DLL - Sistema de archivos y memoria
+# =============================================================================
+
+nuevo CreaArchivoA txt fname, num access, num share, ptr sec,
+    num create, num flags, ptr template ptr hfile;
+nuevo LeeArchivo ptr handle, ptr buffer, num toRead, ptr read, ptr overlap num ret;
+nuevo EscribeArchivo ptr handle, ptr buffer, num toWrite, ptr written, ptr overlap num ret;
+nuevo CierraManejo ptr handle num ret;
+nuevo ObtenManejoModuloA txt moduleName ptr ret;
+nuevo ObtenProcDireccion ptr module, txt procName ptr ret;
+nuevo CargaLibreriaA txt dllName ptr ret;
+nuevo LiberaLibreria ptr module num ret;
+nuevo ObtenConteoTicks num ret;
+
+# =============================================================================
+# Helpers de alto nivel (dialecto español)
+# =============================================================================
+
+nuevo CreaVentanaSimple txt title, num x, num y, num w, num h, ptr parent ptr hwnd {
+    ptr result = cal CreaVentanaExA(
+        0, "PortulIDE", title, WS_OVERLAPPEDWINDOW,
+        x, y, w, h, parent, 0, 0, 0
+    );
+    chk result;
+    regresa result;
+}
+
+nuevo TextoGDI ptr hdc, num x, num y, txt str, num color {
+    num prevColor = cal PonColorTexto(hdc, color);
+    cal PonModoFondo(hdc, TRANSPARENT);
+    num len = cal longitud str;
+    cal TextoFueraA(hdc, x, y, str, len);
+    cal PonColorTexto(hdc, prevColor);
+}
+
+nuevo LeeArchivoCompleto txt path, ptr outBuf, ptr outLen err {
+    ptr handle = cal CreaArchivoA(
+        path, GENERIC_READ, 0, 0, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0
+    );
+    si equ handle 0 { regresa -1; }
+
+    num total = 0;
+    num chunk = 4096;
+    ptr temp = cal asigna chunk;
+    chk temp;
+
+    mientras 1 {
+        ptr bytesRead = cal asigna 4;
+        cal LeeArchivo(handle, temp, chunk, bytesRead, 0);
+        num leido = cal leeMem bytesRead;
+        si equ leido 0 { rompe; }
+        cal copiaMem suma outBuf total, temp, leido;
+        suma total leido;
+        libera bytesRead;
+    }
+
+    libera temp;
+    cal CierraManejo(handle);
+    pon outLen total;
+    regresa 0;
+}
+
+nuevo EscribeArchivoCompleto txt path, ptr buf, num len err {
+    ptr handle = cal CreaArchivoA(
+        path, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0
+    );
+    si equ handle 0 { regresa -1; }
+
+    ptr written = cal asigna 4;
+    cal EscribeArchivo(handle, buf, len, written, 0);
+    libera written;
+    cal CierraManejo(handle);
+    regresa 0;
+}
+
+nuevo MuestraError txt msg {
+    cal MensajeCajaA(0, msg, "Portul IDE Error", 0);
+}
+
+# =============================================================================
+# WNDCLASSEX helper
+# =============================================================================
+
+nuevo InicializaClaseVentana ptr wc, ptr wndProc, ptr hInst {
+    cal escribeMem wc 48;
+    cal escribeMem suma wc 4 0;
+    cal escribeMem suma wc 8 wndProc;
+    cal escribeMem suma wc 16 0;
+    cal escribeMem suma wc 20 0;
+    cal escribeMem suma wc 24 hInst;
+    cal escribeMem suma wc 32 0;
+    cal escribeMem suma wc 40 IDC_FLECHA;
+    cal escribeMem suma wc 48 WHITE_BRUSH;
+    cal escribeMem suma wc 56 0;
+    cal escribeMem suma wc 64 "PortulIDE";
+    cal escribeMem suma wc 72 0;
+}
+
+# =============================================================================
+# Exportaciones
+# =============================================================================
+
+# USER32
+exp RegistraClaseExA; exp CreaVentanaExA; exp DefWindowProcA;
+exp ObtenMensajeA; exp DespachaMensajeA; exp PostMensajeSalida;
+exp InvalidaRecto; exp ObtenRectoCliente; exp MuestraVentana;
+exp ActualizaVentana; exp PonFoco; exp ObtenLongVentanaA;
+exp PonLongVentanaA; exp ValidaRecto; exp TraduceMensaje;
+exp MensajeCajaA; exp IDC_FLECHA;
+
+# GDI32
+exp ObtenDC; exp LiberaDC; exp TextoFueraA; exp PonColorTexto;
+exp PonModoFondo; exp RellenaRecto; exp ObtenObjetoStock;
+exp CreaBrochaSolida; exp BorraObjeto; exp SeleccionaObjeto;
+
+# KERNEL32
+exp CreaArchivoA; exp LeeArchivo; exp EscribeArchivo; exp CierraManejo;
+exp ObtenManejoModuloA; exp ObtenProcDireccion; exp CargaLibreriaA;
+exp LiberaLibreria; exp ObtenConteoTicks;
+
+# Helpers
+exp CreaVentanaSimple; exp TextoGDI; exp LeeArchivoCompleto;
+exp EscribeArchivoCompleto; exp MuestraError; exp InicializaClaseVentana;
+
+# Constantes
+exp TRANSPARENT; exp OPAQUE; exp WHITE_BRUSH; exp GENERIC_READ;
+exp GENERIC_WRITE; exp CREATE_ALWAYS; exp OPEN_ALWAYS;
+exp FILE_ATTRIBUTE_NORMAL;
+
+# Optimización
+rapido codigo;
+seguro codigo;
