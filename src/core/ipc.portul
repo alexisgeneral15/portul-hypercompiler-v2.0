@@ -1,1 +1,29 @@
+# ipc.portul - Comunicación entre procesos
+# Usa pipes con nombre o sockets locales (Unix domain sockets)
 
+new ipc_srv txt name {
+    # Crea servidor IPC (espera conexiones)
+    # Retorna socket handle
+    ret 0;
+}
+
+new ipc_cli txt name {
+    # Conecta a servidor IPC
+    ret 0;
+}
+
+new ipc_snd ptr handle txt msg {
+    # Envía mensaje JSON-RPC
+    ret 1;
+}
+
+new ipc_rcv ptr handle {
+    # Recibe mensaje (bloqueante o no)
+    # Retorna buffer con JSON
+    ret ref 0;
+}
+
+new ipc_cls ptr handle {
+    # Cierra conexión
+    ret 1;
+}
