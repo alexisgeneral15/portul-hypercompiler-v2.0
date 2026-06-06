@@ -1,0 +1,27 @@
+# err.portul - Sistema de errores centralizado
+
+txt ERR_NONE = "OK";
+txt ERR_FILE = "ERR_FILE_NOT_FOUND";
+txt ERR_MEM = "ERR_OUT_OF_MEMORY";
+txt ERR_IPC = "ERR_IPC_FAILED";
+txt ERR_PROC = "ERR_PROCESS_FAILED";
+
+ary error_stack = [];
+
+new err_set txt code txt msg {
+    # Registra error
+    put error_stack code;
+    put error_stack msg;
+    ret 0;
+}
+
+new err_get {
+    # Retorna último error
+    ret ref error_stack;
+}
+
+new err_clr {
+    # Limpia stack de errores
+    set error_stack [];
+    ret 1;
+}
