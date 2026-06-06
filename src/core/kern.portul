@@ -1,40 +1,74 @@
-# kern.portul - Kernel Abstraction Layer
-# Envuelve llamadas al sistema operativo
+# core/kern.portul - Versión Tren Bala
 
-new kern_init {
-    # Inicializa la capa de abstracción
-    ret 1;
-}
+use "macros/portul-ffi.portul";
 
-# File operations
+# Importar kernel32.dll con optimización de tamaño
+cal dll_import "kernel32.dll";
+
+# Estructuras empaquetadas (Data-Oriented Design)
+cal pac SECURITY_ATTRIBUTES [
+    num nLength,
+    ptr lpSecurityDescriptor,
+    flg bInheritHandle
+];
+
+cal pac OVERLAPPED [
+    num Internal,
+    num InternalHigh,
+    union [
+        struct [num Offset, num OffsetHigh],
+        ptr Pointer
+    ],
+    num hEvent
+];
+
+# Funciones externas con optimización
+# El compilador genera código inline cuando es posible
+cal ffn "CreateFileW" [
+    txt lpFileName,
+    num dwDesiredAccess,
+    num dwShareMode,
+    ptr lpSecurityAttributes,
+    num dwCreationDisposition,
+    num dwFlagsAndAttributes,
+    num hTemplateFile
+] "num";
+
+cal ffn "ReadFile" [
+    num hFile,
+    ptr lpBuffer,
+    num nNumberOfBytesToRead,
+    ptr lpNumberOfBytesRead,
+    ptr lpOverlapped
+] "flg";
+
+cal ffn "CloseHandle" [num hObject] "flg";
+
+# Wrapper de alto nivel (optimizado con LTO)
 new fil_opn txt path num mode {
-    # Abre archivo, retorna handle
-    ret 0;
+    num access = 0x80000000;  # GENERIC_READ
+    if equ mode 1 {
+        set access 0x40000000;  # GENERIC_WRITE
+    }
+    
+    num handle = cal CreateFileW path access 0 ref 0 3 0x80 0;
+    if equ handle -1 {
+        cal err_set "ERR_FILE" "Cannot open file";
+        ret -1;
+    }
+    ret handle;
 }
 
-new fil_red ptr handle ptr buf num size {
-    # Lee bytes del archivo
-    ret 0;
+new fil_red num handle ptr buf num size {
+    num bytes_read = 0;
+    flg success = cal ReadFile handle buf size ref bytes_read ref 0;
+    if not success {
+        ret -1;
+    }
+    ret bytes_read;
 }
 
-new fil_wrt ptr handle ptr buf num size {
-    # Escribe bytes al archivo
-    ret 0;
-}
-
-new fil_cls ptr handle {
-    # Cierra archivo
-    ret 0;
-}
-
-# Memory mapping
-new mem_map ptr handle num offset num size {
-    # Mapea archivo a memoria
-    ret ref 0;
-}
-
-# Time
-new tim_now {
-    # Retorna timestamp actual en nanosegundos
-    ret 0;
+new fil_cls num handle {
+    flg success = cal CloseHandle handle;
+    ret success;
 }
