@@ -1,0 +1,26 @@
+# prc.portul - Gestión de procesos
+# Permite lanzar el compilador, Aether, etc. como procesos hijos
+
+ary child_procs = [];
+
+new prc_spn txt exe_path ary args {
+    # Lanza proceso hijo
+    # Retorna PID
+    ret 0;
+}
+
+new prc_wat num pid {
+    # Espera a que termine el proceso
+    # Retorna código de salida
+    ret 0;
+}
+
+new prc_kil num pid {
+    # Mata proceso
+    ret 1;
+}
+
+new prc_red num pid {
+    # Lee stdout del proceso hijo
+    ret ref 0;
+}
