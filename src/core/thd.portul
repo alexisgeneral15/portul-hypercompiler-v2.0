@@ -1,0 +1,28 @@
+# thd.portul - Threading y sincronización
+# Usa threads nativos del OS
+
+new thd_spa ptr func ptr arg {
+    # Crea nuevo thread
+    # Retorna thread ID
+    ret 0;
+}
+
+new thd_join num tid {
+    # Espera a que termine el thread
+    ret 0;
+}
+
+new mtx_new {
+    # Crea mutex
+    ret ref 0;
+}
+
+new mtx_lck ptr mutex {
+    # Lock
+    ret 1;
+}
+
+new mtx_unl ptr mutex {
+    # Unlock
+    ret 1;
+}
