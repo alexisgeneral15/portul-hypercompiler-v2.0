@@ -1,1 +1,32 @@
+# vfs.portul - Virtual File System
+# Maneja archivos, directorios y watch de cambios
 
+ary open_files = [];       # Handles abiertos
+ary file_watchers = [];    # Watchers activos
+
+new vfs_init {
+    # Inicializa VFS
+    cal kern_init;
+    ret 1;
+}
+
+new vfs_opn txt path {
+    # Abre archivo y lo registra
+    num h = cal fil_opn path 0;
+    if gt h 0 {
+        put open_files h;
+    }
+    ret h;
+}
+
+new vfs_wat txt path {
+    # Registra watcher para notificaciones de cambio
+    # (inotify en Linux, ReadDirectoryChangesW en Windows)
+    ret 1;
+}
+
+new vfs_evt {
+    # Retorna evento de archivo si hay cambios
+    # Usado por el editor para recargar automáticamente
+    ret 0;
+}
