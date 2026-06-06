@@ -1,0 +1,24 @@
+# macros/portul-ffi.portul
+
+# Macro principal para importar DLL/SO
+mac dll_import txt dll_name {
+    # El compilador expande esto a código de carga dinámica optimizado
+    # Usa LoadLibrary en Windows, dlopen en Linux
+}
+
+# Macro para declarar función externa con atributos
+mac ffn txt name ary params txt return_type {
+    # Genera el thunk de llamada optimizado
+    # Aplica: inline, noinline, pure, const según el caso
+}
+
+# Macro para struct empaquetado
+mac pac txt name ary fields {
+    # Fuerza __attribute__((packed)) 
+    # Elimina padding, ahorra memoria
+}
+
+# Macro para unión (datos compartidos)
+mac unn txt name ary fields {
+    # Múltiples interpretaciones de la misma memoria
+}
