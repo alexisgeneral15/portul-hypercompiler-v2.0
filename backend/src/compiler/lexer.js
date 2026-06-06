@@ -1,338 +1,86 @@
-/**
- * PortulLexer: Tokeniza código Portul
- */
+// backend/src/compiler/lexer.js
 
 const KEYWORDS = new Set([
-  'si', 'si_no', 'para', 'mientras', 'hacer', 'saltar', 'continuar',
-  'regresa', 'funcion', 'clase', 'nuevo', 'esto', 'nulo', 'verdadero', 
-  'falso', 'num', 'txt', 'obj', 'ary', 'ptr', 'vacio'
+  // Portul v1.0A3 Nativo
+  'num', 'txt', 'flg', 'ary', 'obj', 'ptr', 'own',
+  'add', 'sub', 'mul', 'div', 'mod', 'inc', 'dec',
+  'equ', 'neq', 'gt', 'lt', 'gte', 'lte',
+  'and', 'or', 'xor', 'not',
+  'if', 'for', 'whl', 'try', 'err', 'fin', 'jump', 'ret',
+  'new', 'cal', 'use', 'exp', 'get', 'put', 'set', 'len', 'del', 'chk',
+  'fast', 'safe', 'cache', 'loop', 'data', 'code', 'heap', 'pin', 'core',
+  'pipe', 'sync', 'task', 'pool', 'work', 'done',
+  
+  // ➕ NUEVO: Keywords de PortulScript (PTS)
+  'class', 'fn', 'in', 'true', 'false', 'print', 'return',
+  'elif', 'else', 'while', 'break', 'continue'
 ]);
 
-const TOKEN_TYPES = {
-  // Literals
-  NUMBER: 'NUMBER',
-  STRING: 'STRING',
-  IDENTIFIER: 'IDENTIFIER',
-  
-  // Keywords
-  KEYWORD: 'KEYWORD',
-  
-  // Operators
-  PLUS: 'PLUS',
-  MINUS: 'MINUS',
-  MULTIPLY: 'MULTIPLY',
-  DIVIDE: 'DIVIDE',
-  MODULO: 'MODULO',
-  POWER: 'POWER',
-  
-  // Comparison
-  EQ: 'EQ',
-  NEQ: 'NEQ',
-  LT: 'LT',
-  GT: 'GT',
-  LTE: 'LTE',
-  GTE: 'GTE',
-  
-  // Logical
-  AND: 'AND',
-  OR: 'OR',
-  NOT: 'NOT',
-  
-  // Assignment
-  ASSIGN: 'ASSIGN',
-  PLUS_ASSIGN: 'PLUS_ASSIGN',
-  MINUS_ASSIGN: 'MINUS_ASSIGN',
-  
-  // Punctuation
-  LPAREN: 'LPAREN',
-  RPAREN: 'RPAREN',
-  LBRACE: 'LBRACE',
-  RBRACE: 'RBRACE',
-  LBRACKET: 'LBRACKET',
-  RBRACKET: 'RBRACKET',
-  SEMICOLON: 'SEMICOLON',
-  COMMA: 'COMMA',
-  DOT: 'DOT',
-  COLON: 'COLON',
-  ARROW: 'ARROW',
-  
-  EOF: 'EOF'
-};
+const PTS_MACROS = new Set(['@fast_mode', '@safe_mode', '@hot']);
 
-export class PortulLexer {
-  constructor() {
-    this.tokens = [];
-    this.pos = 0;
-    this.line = 1;
-    this.col = 1;
-    this.source = '';
-  }
+export function tokenize(source) {
+  const tokens = [];
+  let current = 0;
 
-  tokenize(source) {
-    this.source = source;
-    this.pos = 0;
-    this.line = 1;
-    this.col = 1;
-    this.tokens = [];
+  while (current < source.length) {
+    let char = source[current];
 
-    while (this.pos < this.source.length) {
-      this.skipWhitespaceAndComments();
-      
-      if (this.pos >= this.source.length) break;
-
-      const ch = this.source[this.pos];
-
-      // Numbers
-      if (/\d/.test(ch)) {
-        this.scanNumber();
-      }
-      // Strings
-      else if (ch === '"' || ch === "'") {
-        this.scanString();
-      }
-      // Identifiers and keywords
-      else if (/[a-zA-Z_]/.test(ch)) {
-        this.scanIdentifierOrKeyword();
-      }
-      // Operators and punctuation
-      else {
-        this.scanOperator();
-      }
+    // Ignorar espacios y saltos de línea
+    if (/\s/.test(char)) {
+      current++;
+      continue;
     }
 
-    this.tokens.push({
-      type: TOKEN_TYPES.EOF,
-      value: null,
-      line: this.line,
-      col: this.col
-    });
-
-    return this.tokens;
-  }
-
-  skipWhitespaceAndComments() {
-    while (this.pos < this.source.length) {
-      const ch = this.source[this.pos];
-      
-      if (/\s/.test(ch)) {
-        if (ch === '\n') {
-          this.line++;
-          this.col = 1;
-        } else {
-          this.col++;
-        }
-        this.pos++;
-      } else if (ch === '/' && this.source[this.pos + 1] === '/') {
-        // Line comment
-        while (this.pos < this.source.length && this.source[this.pos] !== '\n') {
-          this.pos++;
-        }
-      } else if (ch === '/' && this.source[this.pos + 1] === '*') {
-        // Block comment
-        this.pos += 2;
-        while (this.pos < this.source.length - 1) {
-          if (this.source[this.pos] === '*' && this.source[this.pos + 1] === '/') {
-            this.pos += 2;
-            break;
-          }
-          if (this.source[this.pos] === '\n') {
-            this.line++;
-            this.col = 1;
-          } else {
-            this.col++;
-          }
-          this.pos++;
-        }
+    // ➕ NUEVO: Macros de PTS (@fast_mode, etc.)
+    if (char === '@') {
+      let macro = '@';
+      current++;
+      while (current < source.length && /[a-zA-Z_]/.test(source[current])) {
+        macro += source[current];
+        current++;
+      }
+      if (PTS_MACROS.has(macro)) {
+        tokens.push({ type: 'PTS_MACRO', value: macro });
       } else {
-        break;
+        throw new Error(`Macro desconocida: ${macro}`);
       }
-    }
-  }
-
-  scanNumber() {
-    const startPos = this.pos;
-    const startCol = this.col;
-
-    while (this.pos < this.source.length && /\d/.test(this.source[this.pos])) {
-      this.pos++;
-      this.col++;
+      continue;
     }
 
-    // Check for decimal
-    if (this.source[this.pos] === '.' && /\d/.test(this.source[this.pos + 1])) {
-      this.pos++;
-      this.col++;
-      while (this.pos < this.source.length && /\d/.test(this.source[this.pos])) {
-        this.pos++;
-        this.col++;
-      }
-    }
-
-    const value = this.source.slice(startPos, this.pos);
-    this.tokens.push({
-      type: TOKEN_TYPES.NUMBER,
-      value: parseFloat(value),
-      line: this.line,
-      col: startCol
-    });
-  }
-
-  scanString() {
-    const quote = this.source[this.pos];
-    this.pos++;
-    this.col++;
-    const startCol = this.col;
-    let value = '';
-
-    while (this.pos < this.source.length && this.source[this.pos] !== quote) {
-      if (this.source[this.pos] === '\\') {
-        this.pos++;
-        this.col++;
-        const escaped = this.source[this.pos];
-        switch (escaped) {
-          case 'n': value += '\n'; break;
-          case 't': value += '\t'; break;
-          case '\\': value += '\\'; break;
-          case quote: value += quote; break;
-          default: value += escaped;
-        }
-      } else {
-        value += this.source[this.pos];
+    // Identificadores y Keywords
+    if (/[a-zA-Z_]/.test(char)) {
+      let identifier = '';
+      while (current < source.length && /[a-zA-Z0-9_]/.test(source[current])) {
+        identifier += source[current];
+        current++;
       }
       
-      if (this.source[this.pos] === '\n') {
-        this.line++;
-        this.col = 1;
+      if (KEYWORDS.has(identifier)) {
+        tokens.push({ type: 'KEYWORD', value: identifier });
+      } else if (identifier === 'true' || identifier === 'false') {
+        tokens.push({ type: 'BOOLEAN', value: identifier === 'true' ? '1' : '0' });
       } else {
-        this.col++;
+        tokens.push({ type: 'IDENTIFIER', value: identifier });
       }
-      this.pos++;
+      continue;
     }
 
-    if (this.source[this.pos] === quote) {
-      this.pos++;
-      this.col++;
+    // ➕ NUEVO: Operador de Rango (..) y Pipeline (|>)
+    if (char === '.' && source[current + 1] === '.') {
+      tokens.push({ type: 'RANGE', value: '..' });
+      current += 2;
+      continue;
+    }
+    if (char === '|' && source[current + 1] === '>') {
+      tokens.push({ type: 'PIPE', value: '|>' });
+      current += 2;
+      continue;
     }
 
-    this.tokens.push({
-      type: TOKEN_TYPES.STRING,
-      value,
-      line: this.line,
-      col: startCol
-    });
+    // ... (mantener el resto de tu lógica de lexer para números, strings, operadores infijos +, -, *, /, ==, etc.)
+    // Asegúrate de agregar tokens para: 'PLUS', 'MINUS', 'STAR', 'SLASH', 'EQUALS', 'EQ' (==)
   }
 
-  scanIdentifierOrKeyword() {
-    const startPos = this.pos;
-    const startCol = this.col;
-
-    while (this.pos < this.source.length && /[a-zA-Z0-9_]/.test(this.source[this.pos])) {
-      this.pos++;
-      this.col++;
-    }
-
-    const value = this.source.slice(startPos, this.pos);
-
-    if (KEYWORDS.has(value)) {
-      this.tokens.push({
-        type: TOKEN_TYPES.KEYWORD,
-        value,
-        line: this.line,
-        col: startCol
-      });
-    } else {
-      this.tokens.push({
-        type: TOKEN_TYPES.IDENTIFIER,
-        value,
-        line: this.line,
-        col: startCol
-      });
-    }
-  }
-
-  scanOperator() {
-    const ch = this.source[this.pos];
-    const nextCh = this.source[this.pos + 1];
-    const startCol = this.col;
-
-    // Multi-character operators
-    if (ch === '=' && nextCh === '=') {
-      this.tokens.push({ type: TOKEN_TYPES.EQ, value: '==', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '!' && nextCh === '=') {
-      this.tokens.push({ type: TOKEN_TYPES.NEQ, value: '!=', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '<' && nextCh === '=') {
-      this.tokens.push({ type: TOKEN_TYPES.LTE, value: '<=', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '>' && nextCh === '=') {
-      this.tokens.push({ type: TOKEN_TYPES.GTE, value: '>=', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '&' && nextCh === '&') {
-      this.tokens.push({ type: TOKEN_TYPES.AND, value: '&&', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '|' && nextCh === '|') {
-      this.tokens.push({ type: TOKEN_TYPES.OR, value: '||', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '+' && nextCh === '=') {
-      this.tokens.push({ type: TOKEN_TYPES.PLUS_ASSIGN, value: '+=', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '-' && nextCh === '=') {
-      this.tokens.push({ type: TOKEN_TYPES.MINUS_ASSIGN, value: '-=', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '-' && nextCh === '>') {
-      this.tokens.push({ type: TOKEN_TYPES.ARROW, value: '->', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else if (ch === '*' && nextCh === '*') {
-      this.tokens.push({ type: TOKEN_TYPES.POWER, value: '**', line: this.line, col: startCol });
-      this.pos += 2;
-      this.col += 2;
-    } else {
-      // Single character operators
-      const typeMap = {
-        '+': TOKEN_TYPES.PLUS,
-        '-': TOKEN_TYPES.MINUS,
-        '*': TOKEN_TYPES.MULTIPLY,
-        '/': TOKEN_TYPES.DIVIDE,
-        '%': TOKEN_TYPES.MODULO,
-        '=': TOKEN_TYPES.ASSIGN,
-        '<': TOKEN_TYPES.LT,
-        '>': TOKEN_TYPES.GT,
-        '!': TOKEN_TYPES.NOT,
-        '(': TOKEN_TYPES.LPAREN,
-        ')': TOKEN_TYPES.RPAREN,
-        '{': TOKEN_TYPES.LBRACE,
-        '}': TOKEN_TYPES.RBRACE,
-        '[': TOKEN_TYPES.LBRACKET,
-        ']': TOKEN_TYPES.RBRACKET,
-        ';': TOKEN_TYPES.SEMICOLON,
-        ',': TOKEN_TYPES.COMMA,
-        '.': TOKEN_TYPES.DOT,
-        ':': TOKEN_TYPES.COLON
-      };
-
-      if (typeMap[ch]) {
-        this.tokens.push({
-          type: typeMap[ch],
-          value: ch,
-          line: this.line,
-          col: startCol
-        });
-      }
-
-      this.pos++;
-      this.col++;
-    }
-  }
+  tokens.push({ type: 'EOF', value: '' });
+  return tokens;
 }
-
-export { TOKEN_TYPES, KEYWORDS };
