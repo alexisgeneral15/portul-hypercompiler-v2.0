@@ -1,0 +1,33 @@
+# mem.portul - Sistema de memoria extendido
+# Complementa tu arena allocator actual
+
+new mem_all num size {
+    # Aloca memoria del heap
+    ret ref 0;
+}
+
+new mem_fre ptr block {
+    # Libera memoria
+    ret 1;
+}
+
+new mem_rea ptr block num new_size {
+    # Realloc
+    ret ref 0;
+}
+
+# Object pool para objetos frecuentes (nodos AST, tokens, etc.)
+new pol_new num obj_size num pool_size {
+    # Crea pool de objetos pre-allocados
+    ret ref 0;
+}
+
+new pol_get ptr pool {
+    # Obtiene objeto del pool
+    ret ref 0;
+}
+
+new pol_rel ptr pool ptr obj {
+    # Regresa objeto al pool
+    ret 1;
+}
