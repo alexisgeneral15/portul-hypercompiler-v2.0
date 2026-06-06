@@ -1,1 +1,40 @@
+# kern.portul - Kernel Abstraction Layer
+# Envuelve llamadas al sistema operativo
 
+new kern_init {
+    # Inicializa la capa de abstracción
+    ret 1;
+}
+
+# File operations
+new fil_opn txt path num mode {
+    # Abre archivo, retorna handle
+    ret 0;
+}
+
+new fil_red ptr handle ptr buf num size {
+    # Lee bytes del archivo
+    ret 0;
+}
+
+new fil_wrt ptr handle ptr buf num size {
+    # Escribe bytes al archivo
+    ret 0;
+}
+
+new fil_cls ptr handle {
+    # Cierra archivo
+    ret 0;
+}
+
+# Memory mapping
+new mem_map ptr handle num offset num size {
+    # Mapea archivo a memoria
+    ret ref 0;
+}
+
+# Time
+new tim_now {
+    # Retorna timestamp actual en nanosegundos
+    ret 0;
+}
